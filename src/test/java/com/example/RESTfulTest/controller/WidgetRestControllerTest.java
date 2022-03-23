@@ -20,6 +20,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.ArgumentMatchers.any;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import static org.hamcrest.Matchers.*;
@@ -35,6 +36,7 @@ class WidgetRestControllerTest {
     private MockMvc mockMvc;
 
 
+    // Get all success
     @Test
     @DisplayName("GET /widgets success")
     void testGetWidgetsSuccess() throws Exception {
@@ -65,19 +67,20 @@ class WidgetRestControllerTest {
     }
 
 
-
+    // Get byID error
     @Test
     @DisplayName("GET /rest/widget/1 - Not Found")
     void testGetWidgetByIdNotFound() throws Exception {
         // Setup our mocked service
+
         doReturn(Optional.empty()).when(service).findById(1l);
 
-        // Execute the GET request
         mockMvc.perform(get("/rest/widget/{id}", 1L))
-                // Validate the response code
                 .andExpect(status().isNotFound());
+
     }
 
+    // POST new widget
     @Test
     @DisplayName("POST /rest/widget")
     void testCreateWidget() throws Exception {
@@ -104,6 +107,41 @@ class WidgetRestControllerTest {
                 .andExpect(jsonPath("$.name", is("New Widget")))
                 .andExpect(jsonPath("$.description", is("This is my widget")))
                 .andExpect(jsonPath("$.version", is(1)));
+    }
+
+    // PUT byID not found
+    @Test
+    @DisplayName("PUT /rest/widget/{id} - id not found")
+    void testUpdateWidgetNoFound() throws  Exception{
+        Widget widget = new Widget("Test","nuevo Test");
+
+        doReturn(Optional.empty()).when(service).findById(1l);
+
+
+        mockMvc.perform(get("/rest/widget/{id}", 1L)
+                        .header(HttpHeaders.IF_MATCH,"1")
+                        .content(asJsonString(widget))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+    }
+
+    // GET ByID widget success
+    @Test
+    @DisplayName("GET/rest/widget/1")
+    void testGetWidgetById() throws Exception{
+        Widget widget = new Widget(1L, "Test","nuevo Test", 5);
+
+        doReturn(Optional.of(widget)).when(service).findById(1l);
+
+        mockMvc.perform(get("/rest/widget/{id}", 1L))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(header().string(HttpHeaders.ETAG, "\"5\""))
+                .andExpect(header().string(HttpHeaders.LOCATION, "/rest/widget/1"))
+                .andExpect(jsonPath("$.id", is(1)))
+                .andExpect(jsonPath("$.name", is("Test")))
+                .andExpect(jsonPath("$.description", is("nuevo Test")))
+                .andExpect(jsonPath("$.version", is(5)));
     }
 
 
